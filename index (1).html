@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Review & Pay</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#1a1a1a;--muted:#666;--border:#e2e2e2;--blue:#2563eb;--green:#1a8f4c;--grey:#9aa0a6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111;--card:#1c1c1e;--text:#f2f2f2;--muted:#aaa;--border:#333}}
+:root[data-theme="dark"]{--bg:#111;--card:#1c1c1e;--text:#f2f2f2;--muted:#aaa;--border:#333}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.card{background:var(--card);border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,.08);text-align:center;box-sizing:border-box}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 18px}
+.step{border:1px solid var(--border);border-radius:12px;padding:16px;margin:12px 0;text-align:left;transition:opacity .3s}
+.step h2{font-size:16px;margin:0 0 6px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.btn{display:block;width:100%;box-sizing:border-box;padding:14px;border-radius:12px;font-size:17px;font-weight:600;text-decoration:none;border:0;cursor:pointer;color:#fff;margin-top:12px;text-align:center}
+.review{background:var(--blue)}
+.pay{background:var(--green)}
+.pay.disabled{background:var(--grey);pointer-events:none}
+.locked{opacity:.45;pointer-events:none}
+.hidden{display:none}
+input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px solid var(--border);border-radius:10px;margin-top:8px;background:var(--card);color:var(--text)}
+.skip{display:inline-block;margin-top:10px;font-size:13px;color:var(--muted);background:none;border:0;text-decoration:underline;cursor:pointer;padding:0}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1 id="bizName"></h1>
+  <p class="sub">Thank you for visiting!</p>
+
+  <div class="step" id="step1">
+    <h2>Step 1: Leave us a review</h2>
+    <p class="note">Tap below. It opens in a new tab. Post your review, then close that tab to come back here.</p>
+    <a class="btn review" id="reviewBtn" target="_blank" rel="noopener">Leave a review ⭐</a>
+  </div>
+
+  <div class="step locked" id="step2">
+    <h2>Step 2: Pay</h2>
+    <div id="amountBox">
+      <label class="note" for="amt">Enter amount (₹)</label>
+      <input id="amt" type="number" inputmode="decimal" min="1" placeholder="0">
+    </div>
+    <a class="btn pay disabled" id="payBtn" href="#">Pay now</a>
+    <button class="skip" id="skipBtn" type="button">Already reviewed? Tap here</button>
+  </div>
+</div>
+
+<script>
+/* ===== SETTINGS: change only these for each client ===== */
+const CONFIG = {
+  businessName: "PICKTO",
+  upiId: "ks.sutar1972-2@okhdfcbank",
+  payeeName: "Yash Sutar",
+  reviewUrl: "https://g.page/r/CZQSvXyro2SGEBM/review",
+  fixedAmount: "" // e.g. "100" for a fixed price; leave "" to let the customer type it
+};
+/* ======================================================= */
+
+const $ = (id) => document.getElementById(id);
+const step2 = $("step2"), payBtn = $("payBtn"), amt = $("amt");
+let reviewOpened = false;
+
+function unlockPay() {
+  step2.classList.remove("locked");
+  $("skipBtn").classList.add("hidden");
+  refreshPay();
+}
+
+function upiLink(amount) {
+  const note = "Payment to " + CONFIG.businessName;
+  return "upi://pay?pa=" + encodeURIComponent(CONFIG.upiId) +
+         "&pn=" + encodeURIComponent(CONFIG.payeeName) +
+         "&am=" + encodeURIComponent(amount) +
+         "&cu=INR&tn=" + encodeURIComponent(note);
+}
+
+function currentAmount() {
+  return CONFIG.fixedAmount ? CONFIG.fixedAmount : (amt.value || "").trim();
+}
+
+function refreshPay() {
+  const a = currentAmount();
+  const ready = a && Number(a) > 0;
+  payBtn.classList.toggle("disabled", !ready);
+  payBtn.textContent = ready ? "Pay ₹" + a + " now" : "Pay now";
+  payBtn.href = ready ? upiLink(a) : "#";
+}
+
+// Setup
+$("bizName").textContent = CONFIG.businessName;
+$("reviewBtn").href = CONFIG.reviewUrl;
+if (CONFIG.fixedAmount) {
+  $("amountBox").classList.add("hidden");
+}
+amt.addEventListener("input", refreshPay);
+
+// Review tapped: remember it, then unlock Step 2 when the customer comes back
+$("reviewBtn").addEventListener("click", () => { reviewOpened = true; });
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && reviewOpened) unlockPay();
+});
+
+// Fallback for browsers that don't report the return
+$("skipBtn").addEventListener("click", unlockPay);
+
+refreshPay();
+</script>
+</body>
+</html>
