@@ -47,6 +47,7 @@ input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px so
     <h2>Step 1: Leave us a review</h2>
     <p class="note">Tap below. It opens in a new tab. Post your review, then close that tab to come back here.</p>
     <a class="btn review" id="reviewBtn" target="_blank" rel="noopener">Leave a review ⭐</a>
+    <p class="note" id="status" style="margin-top:8px;font-weight:600"></p>
   </div>
 
   <div class="step locked" id="step2">
@@ -81,10 +82,13 @@ async function dbGet() {
   return r.json();
 }
 async function dbMarkReviewed() {
-  await fetch(DB + "/state.json", {
+  const r = await fetch(DB + "/state.json", {
     method: "PUT",
+    keepalive: true,
     body: JSON.stringify({ reviewedAt: { ".sv": "timestamp" } })
   });
+  if (!r.ok) throw new Error("HTTP " + r.status + " " + (await r.text()));
+  return r;
 }
 
 /* ---------- COUNTER SCREEN ---------- */
@@ -150,7 +154,10 @@ function runCustomer() {
 
   $("reviewBtn").addEventListener("click", () => {
     reviewOpened = true;
-    dbMarkReviewed().catch(() => {});
+    $("status").textContent = "Saving...";
+    dbMarkReviewed()
+      .then(() => { $("status").textContent = "Saved. Counter screen will update."; })
+      .catch((e) => { $("status").style.color = "#c0392b"; $("status").textContent = "Save failed: " + e.message; });
   });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && reviewOpened) unlockPay();
