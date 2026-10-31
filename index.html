@@ -59,7 +59,7 @@ input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px so
 
   <div class="step locked" id="step2">
     <h2>Step 2: Pay</h2>
-    <a class="btn pay" id="appAny" href="intent://launch/#Intent;scheme=gpay;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end">Open Google Pay</a>
+    <a class="btn pay" id="appAny" href="intent://launch/#Intent;scheme=gpay;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end">Open UPI App</a>
     <button class="skip" id="skipBtn" type="button">Already reviewed? Tap here</button>
   </div>
 </div>
@@ -154,9 +154,16 @@ function runCustomer() {
   let reviewOpened = false;
 
   function setApps() {
-    // Open Google Pay itself, without a UPI payment intent or prefilled payee/amount.
-    // The customer can then choose Scan QR in Google Pay and scan the counter's bank QR.
-    $("appAny").href = "intent://launch/#Intent;scheme=gpay;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end";
+    // Use the standard UPI payment URI so Android can offer installed UPI apps
+    // (Google Pay, PhonePe, Paytm, BHIM, etc.) in its app chooser.
+    // No amount is supplied. The chosen app may open its pay screen first;
+    // the customer can go back and use Scan QR for the counter QR if needed.
+    const params = new URLSearchParams({
+      pa: CONFIG.upiId,
+      pn: CONFIG.payeeName,
+      cu: "INR"
+    });
+    $("appAny").href = "upi://pay?" + params.toString();
   }
   function unlockPay() {
     $("step2").classList.remove("locked");
