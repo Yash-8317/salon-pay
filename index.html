@@ -55,8 +55,6 @@ input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px so
 
   <div class="step locked" id="step2">
     <h2>Step 2: Pay</h2>
-    <label class="note" for="amt">Enter amount (₹)</label>
-    <input id="amt" type="number" inputmode="decimal" min="1" placeholder="0">
     <div id="apps">
       <a class="btn pay disabled" id="appAny" href="#">Pay ₹ with any UPI app</a>
       <p class="apps-label">Or open a specific app:</p>
@@ -139,37 +137,29 @@ function runCounter() {
 function runCustomer() {
   let reviewOpened = false;
 
-  function payParams(amount) {
+  function payParams() {
     return "pa=" + encodeURIComponent(CONFIG.upiId) +
            "&pn=" + encodeURIComponent(CONFIG.payeeName) +
-           "&am=" + encodeURIComponent(amount) +
            "&cu=INR&tn=" + encodeURIComponent("Payment to " + CONFIG.businessName);
   }
-  function setApp(id, url, ready) {
-    const el = $(id);
-    el.href = ready ? url : "#";
-    el.classList.toggle("disabled", !ready);
-  }
-  function refreshPay() {
-    const a = ($("amt").value || "").trim();
-    const ready = !!(a && Number(a) > 0);
-    const p = ready ? payParams(a) : "";
-    setApp("appAny",     "upi://pay?" + p, ready);
-    setApp("appGpay",    "gpay://upi/pay?" + p, ready);
-    setApp("appPhonepe", "phonepe://pay?" + p, ready);
-    setApp("appPaytm",   "paytmmp://pay?" + p, ready);
-    setApp("appBhim",    "bhim://pay?" + p, ready);
-    $("appAny").textContent = ready ? "Pay ₹" + a + " with any UPI app" : "Enter amount to pay";
+  function setApps() {
+    const p = payParams();
+    $("appAny").href = "upi://pay?" + p;
+    $("appGpay").href = "gpay://upi/pay?" + p;
+    $("appPhonepe").href = "phonepe://pay?" + p;
+    $("appPaytm").href = "paytmmp://pay?" + p;
+    $("appBhim").href = "bhim://pay?" + p;
+    document.querySelectorAll("#apps a").forEach((a) => a.classList.remove("disabled"));
+    $("appAny").textContent = "Pay with any UPI app";
   }
   function unlockPay() {
     $("step2").classList.remove("locked");
     $("skipBtn").classList.add("hidden");
-    refreshPay();
+    setApps();
   }
 
   $("bizName").textContent = CONFIG.businessName;
   $("reviewBtn").href = CONFIG.reviewUrl;
-  $("amt").addEventListener("input", refreshPay);
 
   $("reviewBtn").addEventListener("click", () => {
     reviewOpened = true;
@@ -182,7 +172,7 @@ function runCustomer() {
     if (!document.hidden && reviewOpened) unlockPay();
   });
   $("skipBtn").addEventListener("click", unlockPay);
-  refreshPay();
+  setApps();
 }
 
 if (isCounter) runCounter(); else runCustomer();
