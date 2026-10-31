@@ -59,7 +59,7 @@ input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px so
 
   <div class="step locked" id="step2">
     <h2>Step 2: Pay</h2>
-    <a class="btn pay" id="appAny" href="tez://">Open Google Pay</a>
+    <a class="btn pay" id="appAny" href="intent://launch/#Intent;scheme=gpay;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end">Open Google Pay</a>
     <button class="skip" id="skipBtn" type="button">Already reviewed? Tap here</button>
   </div>
 </div>
@@ -156,7 +156,7 @@ function runCustomer() {
   function setApps() {
     // Open Google Pay itself, without a UPI payment intent or prefilled payee/amount.
     // The customer can then choose Scan QR in Google Pay and scan the counter's bank QR.
-    $("appAny").href = "tez://";
+    $("appAny").href = "intent://launch/#Intent;scheme=gpay;package=com.google.android.apps.nbu.paisa.user;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end";
   }
   function unlockPay() {
     $("step2").classList.remove("locked");
