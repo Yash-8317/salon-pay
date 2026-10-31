@@ -39,6 +39,10 @@ input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px so
   <img class="qr" id="counterQr" alt="QR">
   <p class="note" id="counterNote"></p>
   <div class="timer hidden" id="timer"></div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn review" id="showReview" type="button" style="margin:0;font-size:15px">Show review QR</button>
+    <button class="btn pay" id="showBank" type="button" style="margin:0;font-size:15px">Show bank QR</button>
+  </div>
 </div>
 
 <!-- CUSTOMER PAGE -->
@@ -55,14 +59,7 @@ input{width:100%;box-sizing:border-box;padding:12px;font-size:18px;border:1px so
 
   <div class="step locked" id="step2">
     <h2>Step 2: Pay</h2>
-    <div id="apps">
-      <a class="btn pay disabled" id="appAny" href="#">Pay ₹ with any UPI app</a>
-      <p class="apps-label">Or open a specific app:</p>
-      <a class="btn app disabled" id="appGpay" href="#">Google Pay</a>
-      <a class="btn app disabled" id="appPhonepe" href="#">PhonePe</a>
-      <a class="btn app disabled" id="appPaytm" href="#">Paytm</a>
-      <a class="btn app disabled" id="appBhim" href="#">BHIM</a>
-    </div>
+    <a class="btn pay" id="appAny" href="#">Pay with UPI app</a>
     <button class="skip" id="skipBtn" type="button">Already reviewed? Tap here</button>
   </div>
 </div>
@@ -105,28 +102,47 @@ function runCounter() {
   $("counterView").classList.remove("hidden");
   $("counterQr").src = CONFIG.reviewQrImage;
 
-  let lastShown = null;
+  let manual = null;      // "review" | "bank" when staff picks by hand
+  let lastReviewedAt = null;
+
+  function showReview() {
+    $("counterTitle").textContent = "Scan to leave a review";
+    $("counterQr").src = CONFIG.reviewQrImage;
+    $("counterNote").textContent = "";
+    $("timer").classList.add("hidden");
+  }
+  function showBank(secondsLeft) {
+    $("counterTitle").textContent = "Pay here";
+    $("counterQr").src = CONFIG.bankQrImage;
+    $("counterNote").textContent = "Scan with any UPI app and pay.";
+    if (secondsLeft !== null) {
+      $("timer").classList.remove("hidden");
+      $("timer").textContent = secondsLeft + "s";
+    } else {
+      $("timer").classList.add("hidden");
+    }
+  }
+
+  $("showReview").addEventListener("click", () => { manual = "review"; showReview(); });
+  $("showBank").addEventListener("click", () => { manual = "bank"; showBank(null); });
+
   async function tick() {
     let st = null;
     try { st = await dbGet(); } catch (e) { $("counterNote").textContent = "Connection problem, retrying..."; }
     const reviewedAt = st && st.reviewedAt ? Number(st.reviewedAt) : 0;
-    const remaining = reviewedAt + CONFIG.holdSeconds * 1000 - Date.now();
 
-    if (reviewedAt && remaining > 0) {
-      if (lastShown !== "bank") {
-        $("counterTitle").textContent = "Pay here";
-        $("counterQr").src = CONFIG.bankQrImage;
-        $("counterNote").textContent = "Scan with any UPI app and enter the amount.";
-        lastShown = "bank";
-      }
-      $("timer").classList.remove("hidden");
-      $("timer").textContent = Math.ceil(remaining / 1000) + "s";
-    } else if (lastShown !== "review") {
-      $("counterTitle").textContent = "Scan to leave a review";
-      $("counterQr").src = CONFIG.reviewQrImage;
-      $("counterNote").textContent = "";
-      $("timer").classList.add("hidden");
-      lastShown = "review";
+    // A new review from a customer always takes over from manual mode
+    if (reviewedAt && reviewedAt !== lastReviewedAt) {
+      lastReviewedAt = reviewedAt;
+      manual = null;
+    }
+
+    if (manual === "review") { showReview(); }
+    else if (manual === "bank") { /* stays on bank QR until staff or a new review changes it */ }
+    else {
+      const remaining = reviewedAt + CONFIG.holdSeconds * 1000 - Date.now();
+      if (reviewedAt && remaining > 0) showBank(Math.ceil(remaining / 1000));
+      else showReview();
     }
     setTimeout(tick, 1000);
   }
@@ -143,14 +159,10 @@ function runCustomer() {
            "&cu=INR&tn=" + encodeURIComponent("Payment to " + CONFIG.businessName);
   }
   function setApps() {
-    const p = payParams();
-    $("appAny").href = "upi://pay?" + p;
-    $("appGpay").href = "gpay://upi/pay?" + p;
-    $("appPhonepe").href = "phonepe://pay?" + p;
-    $("appPaytm").href = "paytmmp://pay?" + p;
-    $("appBhim").href = "bhim://pay?" + p;
-    document.querySelectorAll("#apps a").forEach((a) => a.classList.remove("disabled"));
-    $("appAny").textContent = "Pay with any UPI app";
+    // Target Google Pay only (Android package); do not show the generic UPI app chooser.
+    $("appAny").href =
+      "intent://pay?" + payParams() +
+      "#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end";
   }
   function unlockPay() {
     $("step2").classList.remove("locked");
